@@ -6,43 +6,37 @@ const jwt = require('jsonwebtoken');
 
 app.use(express.json());
 
-const posts = [
-  {
-    username: 'Test',
-    title: 'Test',
-  },
-  {
-    username: 'Test2',
-    title: 'Title2',
-  },
-];
+let refreshToken = [];
 
-app.get('/posts', authentificateToken, (req, res) => {
-  res.json(posts.filter((post) => post.username === req.user.name));
+app.post('/token', (req, res) => {
+  const refreshToken = req.body.token;
+
+  if (refreshToken == null) return res.sendStatus(401);
+  if (!refreshToken.includes(refreshToken)) return res.sendStatus(403);
+  jwt.verify((refreshToken, process.env.REFRESH_TOKEN_SECRET), (err, user) => {
+    if (err) return res.sendStatus(403);
+    const accessToken = generateAccesToken({ name: user.name });
+    res.json({ accessToken: accessToken });
+  });
+});
+//delete refresh token
+app.delete('logout', (req, res) => {
+  refreshToken = refreshToken.filter((token) => token !== req.body.token);
+  res.sendStatus(204);
 });
 
 app.post('/login', (req, res) => {
-  //create token jwt
   //Authentification
   const username = req.body.username;
   const user = { name: username };
-  //> require('crypto').randomBytes(64).toString('hex') + node in cp
 
-  const accessToken = jwt.sign(user, process.env.ACESS_TOKEN_SECRET);
-  res.json({ accessToken: accessToken });
+  const accessToken = generateAccesToken(user);
+  const refreshToken = jwt.sign(user, process.env.ACESS_TOKEN_SECRET);
+  res.json({ accessToken: accessToken, refreshToken: refreshToken });
 });
 //token get verification -
-function authentificateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  //
-  if (token == null) return res.sendStatus(401);
-  // Bearer TOKEN
-  jwt.verify(token, process.env.ACESS_TOKEN_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
+function generateAccesToken(user) {
+  return jwt.sign(user, process.env.ACESS_TOKEN_SECRET, { expiresIn: '15s' });
 }
 
 app.listen(6000);
