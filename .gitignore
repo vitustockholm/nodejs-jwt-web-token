@@ -26,5 +26,7 @@ yarn-error.log*
 
 server/node_modules
 #new
+node_modules
+.env
 
 
